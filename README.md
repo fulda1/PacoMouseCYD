@@ -23,6 +23,7 @@ Firmware for a WiFi throttle to control locomotives and accessories using a [Che
   * Manually measurement of train speed
   * Station Run: Game for children
   * Next Train: Car cards & waybills game
+  * Extra: Game card cards & waybills editor in the SD from the web browser
   * Multiple WiFi networks
   * WiFi Analyzer
   * Firmware update from SD
