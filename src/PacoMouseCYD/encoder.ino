@@ -8,15 +8,15 @@
 #ifdef ALTERNATE_ENCODER
 
 IRAM_ATTR void encoderISR () {
-  // Encoder interrupt routine for both pins. Updates counter
-  // if they are valid and have rotated a full indent. Based on:
-  //https://garrysblog.com/2021/03/20/reliably-debouncing-rotary-encoders-with-arduino-and-esp32/
+  // Encoder interrupt routine for both pins. Updates counter if they are valid and have rotated a full indent.
+  // Based on:
+  // https://garrysblog.com/2021/03/20/reliably-debouncing-rotary-encoders-with-arduino-and-esp32/
 
-  static uint8_t old_AB = 3;  // Lookup table index
-  static int8_t encval = 0;   // Encoder value
+  static uint8_t old_AB = 3;                                        // Lookup table index
+  static int8_t encval = 0;                                         // Encoder value
   static const int8_t enc_states[]  = {0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0}; // Lookup table
 
-  old_AB <<= 2;                                                       // Remember previous state
+  old_AB <<= 2;                                                     // Remember previous state
 
   if (digitalRead(ENCODER_A)) old_AB |= 0x02;                       // Add current state of pin A
   if (digitalRead(ENCODER_B)) old_AB |= 0x01;                       // Add current state of pin B
@@ -298,9 +298,17 @@ void doAction(uint8_t actionSW) {
     case ACT_CALIBRATE:
       startCalibration();
       break;
-    case ACT_STOP:
+    case ACT_OFF:
       if (notLocked())
         togglePower();
+      break;
+    case ACT_STOP:
+      emergencyStop();
+      break;
+    case ACT_BRAKE:
+      locoData[myLocoData].mySpeed = 1;
+      locoOperationSpeed();
+      updateSpeedDir();
       break;
     case ACT_SHUNTING:
       shuntingMode = !shuntingMode;

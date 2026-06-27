@@ -10,4 +10,7 @@ Isaac Guadix - https://www.iguadix.es/content/carcasa-pacomousecyd
 
 Jindra Fučík - https://www.instructables.com/Building-the-PacoMouseCYD-DCC-Throttle/
 
+Hyta - https://www.printables.com/model/1702940-pacomousecyd-case/files
+
+
 

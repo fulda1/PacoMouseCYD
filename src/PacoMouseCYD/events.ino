@@ -234,6 +234,9 @@ void eventProcess() {
               updateStationStars();
               closeWindow(WIN_STA_STARS);
               break;
+            case WIN_NXT_ORDER:
+              closeWindow(WIN_NXT_ORDER);
+              break;
           }
           break;
         case OBJ_BUTTON:
@@ -359,6 +362,7 @@ void eventProcess() {
                 bitSet(value, LOCK_PROG);
               if ((byte)value != lockOptions) {
                 lockOptions = (byte)value;
+                updateLockAcc();
                 EEPROM.write(EE_LOCK, lockOptions);
                 eepromChanged = true;
                 DEBUG_MSG("Changed LOCK options: %d", lockOptions)
@@ -382,7 +386,7 @@ void eventProcess() {
               value  = atoi(keybHourBuf);
               value2 = atoi(keybMinBuf);
               value3 = atoi(keybRateBuf);
-              value4 = (wifiSetting.protocol == CLIENT_LNET) ? 127 : 63;
+              value4 = (wifiSetting.protocol == CLIENT_LNET) ? 127 : ((wifiSetting.protocol == CLIENT_CS2) ? 60 : 63);
               if ((value > 23) || (value2 > 59) || (value3 > value4)) {
                 for (n = 0; n < 3; n++) {
                   txtData[TXT_HOUR + n].backgnd = COLOR_PINK;
@@ -405,6 +409,7 @@ void eventProcess() {
               locoData[myLocoData].myVmax = atoi(locoEditVmax);
               if (wifiSetting.protocol != CLIENT_ECOS)
                 locoData[myLocoData].myLocoID = atoi(locoEditID);
+              locoData[myLocoData].myProtocol = scrProt;
               loadThrottleData();
               updateSpeedHID();
               //locoData[myLocoData].myVmax = atoi(locoEditVmax);
@@ -475,7 +480,13 @@ void eventProcess() {
                 if ((CVaddress > 1024) || (CVaddress == 0))
                   CVaddress = 8;
                 enterCVdata = false;
-                openWindow(WIN_PROG_CV);
+                if (wifiSetting.protocol == CLIENT_CS2) {
+                  if ((locoData[myLocoData].myProtocol == LOK_DCC) || (locoData[myLocoData].myProtocol == LOK_MM))
+                    openWindow(WIN_PROG_CV);
+                }
+                else {
+                  openWindow(WIN_PROG_CV);
+                }
               }
               break;
             case BUT_MENU_I_CFG:
@@ -521,7 +532,7 @@ void eventProcess() {
               openWindow(WIN_ABOUT);
               break;
             case BUT_OPTIONS:
-              if (wifiSetting.protocol != CLIENT_ECOS)
+              if ((wifiSetting.protocol != CLIENT_ECOS) && (wifiSetting.protocol != CLIENT_XNET))
                 openWindow(WIN_OPTIONS);
               break;
             case BUT_SPEEDO_CNCL:
@@ -625,6 +636,14 @@ void eventProcess() {
               newStationCounters(true);
               openWindow(WIN_STA_RUN);
               break;
+            case BUT_UTL_I_NXT:
+            case BUT_UTL_T_NXT:
+              closeWindow(WIN_UTIL);
+              if (playingGame)
+                openWindow(WIN_PLAY_NEXT);
+              else
+                openWindow(WIN_NEXT_TRAIN);
+              break;
             case BUT_STEAM_CNCL:
               updateSpeedHID();                 // set encoder
               closeWindow(WIN_STEAM);
@@ -659,6 +678,13 @@ void eventProcess() {
               }
               if (isWindow(WIN_ABOUT)) {          // update firmware
                 updateFirmware();
+              }
+              if (isWindow(WIN_OPER_DEST)) {
+                playingGame = false;
+                updateConductorIcon();
+                closeWindow(WIN_OPER_DEST);
+                closeWindow(WIN_PLAY_NEXT);
+                openWindow(WIN_NXT_POINTS);
               }
               break;
             case BUT_CV_LNCV:
@@ -763,19 +789,26 @@ void eventProcess() {
               }
               break;
             case BUT_STA_START:
-              //staCurrStation = 0;
-              updateCountStations();
-              if (staLevel == 1)
-                staLastStation = MAX_STATIONS;
-              staCurrTime = staTime;
-              updateStationTime(staCurrTime);
-              setTimer(TMR_STA_RUN, 10, TMR_PERIODIC);
-              setNewTarget();
-              openWindow(WIN_STA_PLAY);
-              updateSpeedHID();
+              if (isWindow(WIN_STA_RUN)) {
+                updateCountStations();
+                if (staLevel == 1)
+                  staLastStation = MAX_STATIONS;
+                staCurrTime = staTime;
+                updateStationTime(staCurrTime);
+                setTimer(TMR_STA_RUN, 10, TMR_PERIODIC);
+                setNewTarget();
+                openWindow(WIN_STA_PLAY);
+                updateSpeedHID();
+              }
+              if (isWindow(WIN_NEXT_TRAIN)) {
+                initGameNextTrain();
+              }
               break;
             case BUT_STA_CNCL:
-              closeWindow(WIN_STA_RUN);
+              if (isWindow(WIN_STA_RUN))
+                closeWindow(WIN_STA_RUN);
+              if (isWindow(WIN_NEXT_TRAIN))
+                closeWindow(WIN_NEXT_TRAIN);
               break;
             case BUT_STA_STOP:
               closeWindow(WIN_STA_PLAY);
@@ -915,7 +948,66 @@ void eventProcess() {
                 eepromChanged = true;
               }
               break;
-
+            case BUT_OPT_GB:
+              bootMessageCS2();
+              break;
+            case BUT_NXT_LOK:
+              closeWindow(WIN_PLAY_NEXT);
+              break;
+            case BUT_OPER_CNCL:
+              if (isWindow(WIN_OPER_POINT))
+                closeWindow(WIN_OPER_POINT);
+              if (isWindow(WIN_NXT_ORDER))
+                nextPlayerTurn(WIN_NXT_ORDER);
+              if (isWindow(WIN_NXT_EVENT))
+                nextPlayerTurn(WIN_NXT_EVENT);
+              break;
+            case BUT_NXT_GAMEM:
+              if (currGame > 0) {
+                currGame--;
+                snprintf(nxtGameNumBuf, IP_LNG + 1, "%d", currGame);
+                newEvent(OBJ_TXT, TXT_NXT_GAME, EVNT_DRAW);
+              }
+              break;
+            case BUT_NXT_GAMEP:
+              if (currGame < 9) {
+                currGame++;
+                snprintf(nxtGameNumBuf, IP_LNG + 1, "%d", currGame);
+                newEvent(OBJ_TXT, TXT_NXT_GAME, EVNT_DRAW);
+              }
+              break;
+            case BUT_NXT_PLAYERM:
+              if (maxConductor > 1)
+                maxConductor--;
+              else
+                maxConductor = 1;
+              snprintf(nxtPlayerNumBuf, IP_LNG + 1, "%d", maxConductor);
+              newEvent(OBJ_TXT, TXT_NXT_PLAYER, EVNT_DRAW);
+              break;
+            case BUT_NXT_PLAYERP:
+              if (maxConductor < 4) {
+                maxConductor++;
+                snprintf(nxtPlayerNumBuf, IP_LNG + 1, "%d", maxConductor);
+                newEvent(OBJ_TXT, TXT_NXT_PLAYER, EVNT_DRAW);
+              }
+              break;
+            case BUT_NXT_PIN:
+              openWindow(WIN_OPER_DEST);
+              break;
+            case BUT_DEST_CNCL:
+              closeWindow(WIN_OPER_DEST);
+              break;
+            case BUT_DEST_END:
+              alertWindow(ERR_ASK_SURE);
+              break;
+            case BUT_POINTS_CNCL:
+              closeWindow(WIN_NXT_POINTS);
+              break;
+            case BUT_SET_DEST:
+              closeWindow(WIN_OPER_DEST);
+              checkEndOrder();
+              getEventCard();
+              break;
           }
           break;
         case OBJ_ICON:
@@ -1019,6 +1111,28 @@ void eventProcess() {
             case ICON_NEXT_ACT_B:
               actionSW_B = nextAction(actionSW_B, SW_LED_B, TXT_ACTION_B);
               break;
+            case ICON_PREV_OPER:
+              if (currOperPoint > 0)
+                currOperPoint--;
+              updateOperPoint();
+              updateOperOrders();
+              break;
+            case ICON_NEXT_OPER:
+              if (currOperPoint < (maxOperPoints - 1))
+                currOperPoint++;
+              updateOperPoint();
+              updateOperOrders();
+              break;
+            case ICON_PREV_DEST:
+              if (currOperPoint > 0)
+                currOperPoint--;
+              updateDestPoint();
+              break;
+            case ICON_NEXT_DEST:
+              if (currOperPoint < (maxOperPoints - 1))
+                currOperPoint++;
+              updateDestPoint();
+              break;
           }
           break;
         case OBJ_FNC:
@@ -1117,6 +1231,16 @@ void eventProcess() {
               if (isTrackOff())
                 resumeOperations();
               break;
+            case FNC_CONDUCTOR:
+              if (playingGame)
+                openWindow(WIN_PLAY_NEXT);
+              break;
+            case FNC_NXT_ACC:
+              openWindow(WIN_ACCESSORY);
+              break;
+            case FNC_NXT_POINT:
+              openWindow(WIN_OPER_POINT);
+              break;
           }
           break;
         case OBJ_TXT:
@@ -1190,6 +1314,13 @@ void eventProcess() {
               break;
             case TXT_EDIT_VMAX:
               openWindow(WIN_VMAX);
+              break;
+            case TXT_EDIT_PROT:
+              scrProt++;
+              if (scrProt == LOK_SX1)
+                scrProt = LOK_DCC;
+              snprintf(locoEditProt, NAME_LNG + 1, "%s", locoNameProt[scrProt]);
+              newEvent(OBJ_TXT, TXT_EDIT_PROT, EVNT_DRAW);
               break;
             case TXT_SEL_ADDR6:
             case TXT_SEL_NAME6:
@@ -1316,6 +1447,12 @@ void eventProcess() {
               keybData[KEYB_STA].idTextbox = event.objID;
               openWindow(WIN_STA_KEYB);
               break;
+            case TXT_NXT_DEST0:
+            case TXT_NXT_DEST1:
+            case TXT_NXT_DEST2:
+            case TXT_NXT_DEST3:
+              takeOrder(event.objID - TXT_NXT_DEST0);
+              break;
           }
           break;
         case OBJ_SWITCH:
@@ -1323,42 +1460,25 @@ void eventProcess() {
           txtID = 0;
           switch (event.objID) {
             case SW_SHUNTING:
-              switchData[SW_SHUNTING].state = !switchData[SW_SHUNTING].state;
-              newEvent(OBJ_SWITCH, SW_SHUNTING, EVNT_DRAW);
-              break;
             case SW_ROTATE:
-              switchData[SW_ROTATE].state = !switchData[SW_ROTATE].state;
-              newEvent(OBJ_SWITCH, SW_ROTATE, EVNT_DRAW);
-              break;
             case SW_RGB_LED:
-              switchData[SW_RGB_LED].state = !switchData[SW_RGB_LED].state;
-              newEvent(OBJ_SWITCH, SW_RGB_LED, EVNT_DRAW);
-              break;
             case SW_LOCK_LOK:
-              switchData[SW_LOCK_LOK].state = !switchData[SW_LOCK_LOK].state;
-              newEvent(OBJ_SWITCH, SW_LOCK_LOK, EVNT_DRAW);
-              break;
             case SW_LOCK_ACC:
-              switchData[SW_LOCK_ACC].state = !switchData[SW_LOCK_ACC].state;
-              newEvent(OBJ_SWITCH, SW_LOCK_ACC, EVNT_DRAW);
-              break;
             case SW_LOCK_PRG:
-              switchData[SW_LOCK_PRG].state = !switchData[SW_LOCK_PRG].state;
-              newEvent(OBJ_SWITCH, SW_LOCK_PRG, EVNT_DRAW);
+              clickSwitch(event.objID);
               break;
             case SW_OPT_ADR:
-              if (wifiSetting.protocol == CLIENT_Z21) {
-                switchData[SW_OPT_ADR].state = !switchData[SW_OPT_ADR].state;
-                newEvent(OBJ_SWITCH, SW_OPT_ADR, EVNT_DRAW);
-                shortAddress = switchData[SW_OPT_ADR].state ? 99 : 127;
-              }
+              clickSwitch(SW_OPT_ADR);
+              shortAddress = switchData[SW_OPT_ADR].state ? 99 : 127;
               break;
             case SW_OPT_DISCOVER:
-              if (wifiSetting.protocol == CLIENT_LNET) {
-                switchData[SW_OPT_DISCOVER].state = !switchData[SW_OPT_DISCOVER].state;
-                newEvent(OBJ_SWITCH, SW_OPT_DISCOVER, EVNT_DRAW);
-                autoIdentifyCS = switchData[SW_OPT_DISCOVER].state ? 1 : 0;
-              }
+              clickSwitch(SW_OPT_DISCOVER);
+              autoIdentifyCS = switchData[SW_OPT_DISCOVER].state ? 1 : 0;
+              break;
+            case SW_OPT_CS2:
+              clickSwitch(SW_OPT_CS2);
+              wifiSetting.serverType = switchData[SW_OPT_CS2].state ? 1 : 0;
+              updateWiFiSettings();
               break;
             case SW_POM:
               modeProg = !switchData[SW_POM].state;
@@ -1379,6 +1499,13 @@ void eventProcess() {
               EEPROM.write(EE_STA_TRNDEF, staTurnoutDef);
               eepromChanged = true;
               DEBUG_MSG("STA DEF: %02X", staTurnoutDef);
+              break;
+            case SW_OPT_CS2_BOOT:
+            case SW_OPT_CS2_ACC:
+              clickSwitch(event.objID);
+              bitWrite(optionsCS2, event.objID - SW_OPT_CS2_BOOT, switchData[event.objID].state);
+              EEPROM.write(EE_CS2, optionsCS2);
+              eepromChanged = true;
               break;
           }
           break;
@@ -1477,6 +1604,7 @@ void eventProcess() {
                     }
                     showFieldsLNCV();
                     break;
+                  case KEYB_CV_ADDR:
                   case KEYB_ACC:
                     txtData[txtID].buf[0] = '\0';
                     break;
@@ -1572,6 +1700,7 @@ void eventProcess() {
                         break;
                       case CLIENT_ECOS:
                       case CLIENT_LNET:
+                      case CLIENT_CS2:
                         n = 127;
                         break;
                     }
@@ -1749,6 +1878,9 @@ void eventProcess() {
               sprintf (locoEditID, "%d", lpicData[LPIC_LOK_EDIT].id);
               closeWindow(WIN_SEL_IMAGE);
               break;
+            case LPIC_NXT_TRAIN:
+              openWindow(WIN_SEL_LOCO);
+              break;
           }
           break;
         case OBJ_BAR:
@@ -1792,7 +1924,20 @@ void eventProcess() {
         case OBJ_GAUGE:
           switch (event.objID) {
             case GAUGE_SPEED:
-              value = (encoderMax == 15) ? 14 : ((encoderMax == 31) ? 7 : 0);
+              switch (encoderMax) {
+                case 15:
+                  value = 14;
+                  break;
+                case 31:
+                  value = 7;
+                  break;
+                case 50:
+                  value = 21;
+                  break;
+                default:
+                  value = 0;
+                  break;
+              }
               if (lastClickX > gaugeData[GAUGE_SPEED].x) {
                 if (lastClickY > gaugeData[GAUGE_SPEED].y) {      // fourth quadrant
                   if (encoderValue < tapSpeedSteps[value + TAP_STP5])
@@ -1844,4 +1989,9 @@ void eventProcess() {
       }
       break;
   }
+}
+
+void clickSwitch(uint16_t id) {
+  switchData[id].state = !switchData[id].state;
+  newEvent(OBJ_SWITCH, id, EVNT_DRAW);
 }

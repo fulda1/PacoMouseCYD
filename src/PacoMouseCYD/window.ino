@@ -117,6 +117,7 @@ void openWindow(uint16_t id) {
       createObject(OBJ_LABEL, LBL_SEL_Z21);
       createObject(OBJ_LABEL, LBL_SEL_XNET);
       createObject(OBJ_LABEL, LBL_SEL_ECOS);
+      createObject(OBJ_LABEL, LBL_SEL_CS2);
       createObject(OBJ_LABEL, LBL_SEL_LNET);
       createObject(OBJ_LABEL, LBL_SEL_LBSERVER);
       createObject(OBJ_LABEL, LBL_SEL_BINARY);
@@ -128,6 +129,7 @@ void openWindow(uint16_t id) {
       iconData[ICON_LOK_EDIT].bitmap = (wifiSetting.protocol == CLIENT_ECOS) ? info24 : wrench;
       createObject(OBJ_WIN, WIN_THROTTLE);
       checkLowBatt();
+      updateLockAcc();
       createObject(OBJ_ICON, ICON_MENU);
       createObject(OBJ_ICON, ICON_POWER);
       createObject(OBJ_LPIC, LPIC_MAIN);
@@ -135,6 +137,7 @@ void openWindow(uint16_t id) {
       createObject(OBJ_ICON, ICON_FNEXT);
       createObject(OBJ_ICON, ICON_LOK_EDIT);
       createObject(OBJ_FNC, FNC_ACC_PANEL);
+      createObject(OBJ_FNC, FNC_CONDUCTOR);
       //createObject(OBJ_ICON, ICON_FWD);
       //createObject(OBJ_ICON, ICON_REV);
       createObject(OBJ_TXT, TXT_CLOCK);
@@ -223,7 +226,10 @@ void openWindow(uint16_t id) {
       createObject(OBJ_TXT, TXT_HOUR);
       createObject(OBJ_TXT, TXT_MIN);
       createObject(OBJ_TXT, TXT_RATE);
-      createObject(OBJ_LABEL, LBL_RATE);
+      if (wifiSetting.protocol == CLIENT_CS2)
+        createObject(OBJ_LABEL, LBL_FACTOR);
+      else
+        createObject(OBJ_LABEL, LBL_RATE);
       createObject(OBJ_KEYBOARD, KEYB_CLOCK);
       createObject(OBJ_BUTTON, BUT_CLOCK_OK);
       createObject(OBJ_BUTTON, BUT_CLOCK_CNCL);
@@ -268,6 +274,11 @@ void openWindow(uint16_t id) {
       sprintf (locoEditID, "%d", locoData[myLocoData].myLocoID);
       sprintf (locoEditVmax, "%d", locoData[myLocoData].myVmax);
       lpicData[LPIC_LOK_EDIT].id = locoData[myLocoData].myLocoID;
+      scrProt = locoData[myLocoData].myProtocol;
+      if (wifiSetting.protocol == CLIENT_CS2)
+        snprintf(locoEditProt, NAME_LNG + 1, "%s", locoNameProt[scrProt]);
+      else
+        sprintf (locoEditProt, "DCC");
       for (n = 0; n < 29; n++)
         fncData[FNC_F0 + n].idIcon = locoData[myLocoData].myFuncIcon[n];
       createObject(OBJ_WIN, WIN_LOK_EDIT);
@@ -277,6 +288,8 @@ void openWindow(uint16_t id) {
       createObject(OBJ_LABEL, LBL_NAME);
       createObject(OBJ_LABEL, LBL_VMAX);
       createObject(OBJ_TXT, TXT_EDIT_ADDR);
+      if (wifiSetting.protocol == CLIENT_CS2)
+        createObject(OBJ_TXT, TXT_EDIT_PROT);
       createObject(OBJ_TXT, TXT_EDIT_NAME);
       createObject(OBJ_TXT, TXT_EDIT_IMAGE);
       createObject(OBJ_TXT, TXT_EDIT_VMAX);
@@ -404,6 +417,19 @@ void openWindow(uint16_t id) {
           break;
         case CLIENT_ECOS:
           break;
+        case CLIENT_CS2:
+          switchData[SW_OPT_CS2].state = wifiSetting.serverType;
+          switchData[SW_OPT_CS2_BOOT].state = bitRead(optionsCS2, CS2_OPT_BOOT);
+          switchData[SW_OPT_CS2_ACC].state = bitRead(optionsCS2, CS2_OPT_ACC);
+          createObject(OBJ_SWITCH, SW_OPT_CS2);
+          createObject(OBJ_LABEL, LBL_CS2_UDP);
+          createObject(OBJ_LABEL, LBL_CS2_TCP);
+          createObject(OBJ_LABEL, LBL_CS2_GB);
+          createObject(OBJ_LABEL, LBL_CS2_ACC);
+          createObject(OBJ_SWITCH, SW_OPT_CS2_BOOT);
+          createObject(OBJ_SWITCH, SW_OPT_CS2_ACC);
+          //createObject(OBJ_BUTTON, BUT_OPT_GB);
+          break;
       }
       createObject(OBJ_BUTTON, BUT_OPT_OK);
       newEvent(OBJ_WIN, WIN_OPTIONS, EVNT_DRAW);
@@ -469,20 +495,27 @@ void openWindow(uint16_t id) {
       newEvent(OBJ_WIN, WIN_READ_CV, EVNT_DRAW);
       break;
     case WIN_PROG_CV:
-      //buttonData[BUT_CV_LNCV].backgnd = (wifiSetting.protocol == CLIENT_LNET) ? COLOR_CREAM : COLOR_LIGHTBLACK;
       setFieldsCV();
       setBitsCV();
       setStatusCV();
-      switchData[SW_POM].state = modeProg;
       createObject(OBJ_WIN, WIN_PROG_CV);
       createObject(OBJ_LABEL, LBL_CV);
       createObject(OBJ_LABEL, LBL_POM);
       createObject(OBJ_LABEL, LBL_BITS);
-      createObject(OBJ_SWITCH, SW_POM);
-      createObject(OBJ_BUTTON, BUT_CV_READ);
       createObject(OBJ_BUTTON, BUT_CV_CNCL);
       if (wifiSetting.protocol == CLIENT_LNET)
         createObject(OBJ_BUTTON, BUT_CV_LNCV);
+      if (wifiSetting.protocol == CLIENT_CS2) {
+        if (locoData[myLocoData].myProtocol == LOK_DCC)
+          createObject(OBJ_BUTTON, BUT_CV_READ);
+        else
+          modeProg = true;
+      }
+      else {
+        createObject(OBJ_BUTTON, BUT_CV_READ);
+      }
+      switchData[SW_POM].state = modeProg;
+      createObject(OBJ_SWITCH, SW_POM);
       createObject(OBJ_KEYBOARD, KEYB_CV);
       createObject(OBJ_CHAR, CHAR_CV_EQUAL);
       createObject(OBJ_BUTTON, BUT_CV_0);
@@ -556,6 +589,8 @@ void openWindow(uint16_t id) {
       createObject(OBJ_BUTTON, BUT_UTL_T_SCAN);
       createObject(OBJ_BUTTON, BUT_UTL_I_STA);
       createObject(OBJ_BUTTON, BUT_UTL_T_STA);
+      createObject(OBJ_BUTTON, BUT_UTL_I_NXT);
+      createObject(OBJ_BUTTON, BUT_UTL_T_NXT);
       createObject(OBJ_ICON, ICON_UTL_EXIT);
       createObject(OBJ_DRAWSTR, DSTR_UTL_MENU);
       newEvent(OBJ_WIN, WIN_UTIL, EVNT_DRAW);
@@ -911,6 +946,114 @@ void openWindow(uint16_t id) {
       //createObject(OBJ_BUTTON, BUT_BATT_CNCL);
       createObject(OBJ_BUTTON, BUT_BATT_CFG);
       newEvent(OBJ_WIN, WIN_BATT, EVNT_DRAW);
+      break;
+    case WIN_NEXT_TRAIN:
+      snprintf(nxtGameNumBuf, IP_LNG + 1, "%d", currGame);
+      snprintf(nxtPlayerNumBuf, IP_LNG + 1, "%d", maxConductor);
+      createObject(OBJ_WIN, WIN_NEXT_TRAIN);
+      createObject(OBJ_LABEL, LBL_NXT_TRAIN);
+      createObject(OBJ_BUTTON, BUT_STA_START);
+      createObject(OBJ_BUTTON, BUT_STA_CNCL);
+      createObject(OBJ_BUTTON, BUT_NXT_GAMEM);
+      createObject(OBJ_BUTTON, BUT_NXT_GAMEP);
+      createObject(OBJ_BUTTON, BUT_NXT_PLAYERM);
+      createObject(OBJ_BUTTON, BUT_NXT_PLAYERP);
+      createObject(OBJ_TXT, TXT_NXT_GAME);
+      createObject(OBJ_TXT, TXT_NXT_PLAYER);
+      createObject(OBJ_FNC, FNC_NXT_PLAYER);
+      createObject(OBJ_LABEL, LBL_GAME);
+      createObject(OBJ_LABEL, LBL_NXT_INSTR);
+      newEvent(OBJ_WIN, WIN_NEXT_TRAIN, EVNT_DRAW);
+      break;
+    case WIN_PLAY_NEXT:
+      updateRound();
+      createObject(OBJ_WIN, WIN_PLAY_NEXT);
+      createObject(OBJ_TXT, TXT_NXT_ROUND);
+      createObject(OBJ_FNC, FNC_CURR_COND);
+      createObject(OBJ_LPIC, LPIC_NXT_TRAIN);
+      createObject(OBJ_FNC, FNC_NXT_ACC);
+      createObject(OBJ_FNC, FNC_NXT_POINT);
+      createObject(OBJ_FNC, FNC_NXT_WAGON0);
+      createObject(OBJ_FNC, FNC_NXT_WAGON1);
+      createObject(OBJ_FNC, FNC_NXT_WAGON2);
+      createObject(OBJ_FNC, FNC_NXT_WAGON3);
+      createObject(OBJ_BUTTON, BUT_NXT_PIN);
+      createObject(OBJ_BUTTON, BUT_NXT_LOK);
+      createObject(OBJ_TXT, TXT_NXT_WAGON0);
+      createObject(OBJ_TXT, TXT_NXT_WAGON1);
+      createObject(OBJ_TXT, TXT_NXT_WAGON2);
+      createObject(OBJ_TXT, TXT_NXT_WAGON3);
+      newEvent(OBJ_WIN, WIN_PLAY_NEXT, EVNT_DRAW);
+      updateLokOrders(true);
+      break;
+    case WIN_OPER_POINT:
+      //getOperPointName(nxtOperName, currOperPoint);
+      createObject(OBJ_WIN, WIN_OPER_POINT);
+      createObject(OBJ_FNC, FNC_NXT_OPER);
+      createObject(OBJ_FNC, FNC_NXT_CAPACITY);
+      createObject(OBJ_FNC, FNC_NXT_DEST0);
+      createObject(OBJ_FNC, FNC_NXT_DEST1);
+      createObject(OBJ_FNC, FNC_NXT_DEST2);
+      createObject(OBJ_FNC, FNC_NXT_DEST3);
+      createObject(OBJ_TXT, TXT_NXT_OPER);
+      createObject(OBJ_TXT, TXT_NXT_DEST0);
+      createObject(OBJ_TXT, TXT_NXT_DEST1);
+      createObject(OBJ_TXT, TXT_NXT_DEST2);
+      createObject(OBJ_TXT, TXT_NXT_DEST3);
+      createObject(OBJ_ICON, ICON_PREV_OPER);
+      createObject(OBJ_ICON, ICON_NEXT_OPER);
+      createObject(OBJ_BUTTON, BUT_OPER_CNCL);
+      newEvent(OBJ_WIN, WIN_OPER_POINT, EVNT_DRAW);
+      updateOperPoint();
+      updateOperOrders();
+      break;
+    case WIN_OPER_DEST:
+      createObject(OBJ_WIN, WIN_OPER_DEST);
+      createObject(OBJ_ICON, ICON_PREV_DEST);
+      createObject(OBJ_ICON, ICON_NEXT_DEST);
+      createObject(OBJ_FNC, FNC_NXT_DEST);
+      createObject(OBJ_TXT, TXT_NXT_DEST);
+      createObject(OBJ_BUTTON, BUT_SET_DEST);
+      createObject(OBJ_BUTTON, BUT_DEST_CNCL);
+      createObject(OBJ_BUTTON, BUT_DEST_END);
+      newEvent(OBJ_WIN, WIN_OPER_DEST, EVNT_DRAW);
+      updateDestPoint();
+      break;
+    case WIN_NXT_POINTS:
+      calcConductorPoints();
+      createObject(OBJ_WIN, WIN_NXT_POINTS);
+      createObject(OBJ_LABEL, LBL_NXT_TRAIN);
+      createObject(OBJ_TXT, TXT_NXT_POINTS0);
+      createObject(OBJ_TXT, TXT_NXT_POINTS1);
+      createObject(OBJ_TXT, TXT_NXT_POINTS2);
+      createObject(OBJ_TXT, TXT_NXT_POINTS3);
+      createObject(OBJ_FNC, FNC_NXT_POINTS0);
+      createObject(OBJ_FNC, FNC_NXT_POINTS1);
+      createObject(OBJ_FNC, FNC_NXT_POINTS2);
+      createObject(OBJ_FNC, FNC_NXT_POINTS3);
+      createObject(OBJ_FNC, FNC_NXT_STAR);
+      createObject(OBJ_BUTTON, BUT_POINTS_CNCL);
+      newEvent(OBJ_WIN, WIN_NXT_POINTS, EVNT_DRAW);
+      break;
+    case WIN_NXT_ORDER:
+      createObject(OBJ_WIN, WIN_NXT_ORDER);
+      createObject(OBJ_DRAWSTR, DSTR_ORDER);
+      createObject(OBJ_LABEL, LBL_FROM);
+      createObject(OBJ_LABEL, LBL_TO);
+      createObject(OBJ_FNC, FNC_NXT_WAGON);
+      createObject(OBJ_FNC, FNC_NXT_POINTS);
+      createObject(OBJ_TXT, TXT_NXT_FROM);
+      createObject(OBJ_TXT, TXT_NXT_TO);
+      createObject(OBJ_BUTTON, BUT_OPER_CNCL);
+      newEvent(OBJ_WIN, WIN_NXT_ORDER, EVNT_DRAW);
+      break;
+    case WIN_NXT_EVENT:
+      createObject(OBJ_WIN, WIN_NXT_EVENT);
+      createObject(OBJ_FNC, FNC_NXT_REWARD);
+      createObject(OBJ_TXT, TXT_EVENT_NAME);
+      createObject(OBJ_TXT, TXT_EVENT_DESC);
+      createObject(OBJ_BUTTON, BUT_OPER_CNCL);
+      newEvent(OBJ_WIN, WIN_NXT_EVENT, EVNT_DRAW);
       break;
   }
 }

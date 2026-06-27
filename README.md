@@ -5,7 +5,7 @@ Firmware for a WiFi throttle to control locomotives and accessories using a [Che
 
 ![FirstVersion](images/PacoMouseCYD.png)
 
-  * Protocols: Z21, Xpressnet LAN, Loconet over TCP/IP (LBserver & Binary) and ECoS
+  * Protocols: Z21, Xpressnet LAN, Loconet over TCP/IP (LBserver & Binary), CS2 and ECoS
   * Control of Locomotives
   * Rotary encoder for loco speed and direction
   * Function icons
@@ -22,6 +22,7 @@ Firmware for a WiFi throttle to control locomotives and accessories using a [Che
   * Locking of some features for guest or club use.
   * Manually measurement of train speed
   * Station Run: Game for children
+  * Next Train: Car cards & waybills game
   * Multiple WiFi networks
   * WiFi Analyzer
   * Firmware update from SD
@@ -47,9 +48,11 @@ Firmware for a WiFi throttle to control locomotives and accessories using a [Che
 ## Documentation
 - https://usuaris.tinet.cat/fmco/
 - https://fmcopaco.github.io/
-- Read the [manual](doc/PacoMouseCYD_manual_v0.9.pdf) in the doc directory
+- Read the [manual](doc/PacoMouseCYD_manual_v0.12.pdf) in the doc directory
 - Step-by-step assembly of PacoMouseCYD by [Isaac](https://www.iguadix.es/content/pacomouse-cyd)
 - Building the PacoMouseCYD Throttle by [Jindra Fučík](https://www.instructables.com/Building-the-PacoMouseCYD-DCC-Throttle/)
+- [Locomotive images](https://fucik.name/PacoMouseCYD.img/) exchange by Jindra Fučík.
+
 
 ---
 

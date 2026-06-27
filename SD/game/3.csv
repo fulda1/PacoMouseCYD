@@ -1,0 +1,53 @@
+Card Type;Card Subtype;Name;Description;Capacity/From/Reward ID;/To/Lost;/Points/
+0;0;Bahnsteig 1;;2;;
+0;0;Bahnsteig 2;;1;;
+0;0;Bahnsteig 3;;2;;
+0;0;Bahnsteig 4;;1;;
+0;1;Ladestelle 1;;1;;
+0;1;Ladestelle 2;;2;;
+0;1;Ladestelle 3;;1;;
+0;2;Betriebswerk;;0;;
+1;3;;;0;1;1
+1;3;;;0;2;2
+1;3;;;0;3;3
+1;3;;;1;0;1
+1;3;;;1;2;2
+1;3;;;1;3;3
+1;3;;;2;0;1
+1;3;;;2;1;2
+1;3;;;2;3;3
+1;3;;;3;0;1
+1;3;;;3;1;2
+1;3;;;3;2;3
+1;4;;;4;5;1
+1;4;;;4;6;2
+1;4;;;5;4;3
+1;4;;;5;6;1
+1;4;;;6;4;2
+1;4;;;6;5;3
+1;4;;;4;5;1
+1;4;;;5;6;2
+1;4;;;6;4;3
+1;5;;;0;3;2
+1;5;;;1;2;2
+1;5;;;2;0;2
+1;5;;;3;1;2
+1;6;;;0;6;5
+2;8;Volldampf;Renn mit voller|Geschwindigkeit um die|Verzogerung aufzuholen.;0;;
+2;8;Lohnerhohung;Mit dieser Gehaltserhohung|konnen Sie einen Streik|beenden.;1;;
+2;8;Rotte;Das Wartungspersonal kann|Fehler an Bauteilen und|Gleisen beheben.;2;;
+2;8;Werkzeug;Die Werkzeuge sind nutzlich|um Pannen und Schaden|zu beheben.;3;;
+2;8;Werbung;Ihr Zug wurde fur seine|Punktlichkeit gelobt.;4;;
+2;7;Lokdefekt;Bringen Sie die Lokomotive|zum Depot, um sie|reparieren zu lassen.;3;;
+2;7;Strekenperrung;Die Strecke von hier zur|nachsten Haltestelle ist|gesperrt;2;2;
+2;7;Evakuierung;Der Bahnhof wurde|aufgrund einer Bedrohung|evakuiert.;99;1;
+2;7;Umleitung;Sie konnen die nachste|Haltestelle nicht direkt|erreichen. Benutzen Sie ein|Ausweichgleis.;99;;
+2;7;Signalstorung;Das Abfahrtssignal|funktioniert nicht richtig.;2;1;
+2;7;Weichenstorung;Die nachste Weichen zum|letzten Zug ist nicht|passierbar.;2;1;
+2;7;Streik;Die Arbeiter streiken.;1;4;
+2;7;Lagerfeuer;Aufgrund eines Brandes im|Lagerhaus kannst du in|dieser Runde nicht laden.;99;;
+2;7;Schnee / Eis;Es hat geschneit und die|Gleise sind unpassierbar.;0;2;
+2;7;Gleisarbeiten;Fahren Sie mit reduzierter|Geschwindigkeit zur|nachsten Haltestelle.;99;;
+2;7;Verspattung;Der Zug hat|Verspatung.;0;1;
+2;7;Raubzug;Der Zug wurde uberfallen|und ist beschadigt.;3;1;
+2;7;Sturm;Aufgrund des Sturms kommt|es wegen des Zustands der|Gleise zu Verspatungen.;99;1;

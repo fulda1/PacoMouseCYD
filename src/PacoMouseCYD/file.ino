@@ -49,6 +49,9 @@ bool saveLocoData(fs::FS &fs, uint16_t pos) {                           // save 
       myFile.print('F');
       myFile.print(cnt);
     }
+    myFile.print(CSV_FILE_DELIMITER);
+    getLabelTxt(LBL_PROTOCOL, field);
+    myFile.print(field);
     myFile.print("\r\n");
     myFile.print(locoData[pos].myName);                   // Loco data
     myFile.print(CSV_FILE_DELIMITER);
@@ -59,6 +62,8 @@ bool saveLocoData(fs::FS &fs, uint16_t pos) {                           // save 
       myFile.print(CSV_FILE_DELIMITER);
       myFile.print(locoData[pos].myFuncIcon[cnt] >> 1);
     }
+    myFile.print(CSV_FILE_DELIMITER);
+    myFile.print(locoData[pos].myProtocol);
     myFile.print("\r\n");
     myFile.close();
     dataOK = true;
@@ -103,6 +108,7 @@ bool readLocoData(fs::FS &fs, uint16_t num, uint16_t pos) {            // read l
               locoData[pos].myFuncIcon[n] = (uint8_t)(atoi(line) << 1);
               //DEBUG_MSG("Func: %d - %d", n, locoData[pos].myFuncIcon[n])
             }
+            locoData[pos].myProtocol = readCSV(myFile, line, sizeof(line), true) ? atoi(line) : LOK_DCC;
             locoData[pos].myAddr.address = num;
             dataOK = true;
           }
@@ -134,8 +140,11 @@ bool readCSV(File & f, char* line, uint16_t maxLen, bool getField) {
         line[n] = '\0';
         return true;
         break;
-      case ',':
-      case ';':
+      /*
+        case ',':
+        case ';':
+      */
+      case CSV_FILE_DELIMITER:
         if (getField) {
           line[n] = '\0';
           return true;
@@ -414,7 +423,192 @@ void progressCallBack(size_t currSize, size_t totalSize) {                      
 }
 
 
+bool loadGame(uint8_t game) {
+  bool dataOK;
+  char line[200];
+  File myFile;
+  totalCards = 0;
+  maxOperPoints = 0;
+  operPointNames[0] = '\0';
+  dataOK = false;
+  sprintf (line, "/game/%d.csv", game);
+  myFile = SD.open(line);
+  if (myFile) {
+    if (readCSV(myFile, line, sizeof(line), false)) {                                     // skip header line
+      dataOK = true;
+      while (readCSV(myFile, line, sizeof(line), true)) {
+        gameCards[totalCards].cardType = (cardtypes)atoi(line);
+        readCSV(myFile, line, sizeof(line), true);
+        gameCards[totalCards].cardSubType = (cardsubtypes)atoi(line);
+        switch (gameCards[totalCards].cardType) {
+          case CARD_OPER_POINT:
+            readCSV(myFile, line, sizeof(line), true);                                    // operation point name
+            line[OPER_NAME_LNG] = '\0';
+            sprintf(operPointNames, "%s%s\n", operPointNames, line);
+            readCSV(myFile, line, sizeof(line), true);
+            gameCards[totalCards].cardLocation = CARD_LAYOUT;
+            gameCards[totalCards].cardLocationNumber = maxOperPoints;
+            readCSV(myFile, line, sizeof(line), true);
+            gameCards[totalCards].cardData[0] = (uint8_t)atoi(line);                      // capacity
+            readCSV(myFile, line, sizeof(line), false);
+            maxOperPoints++;
+            break;
+          case CARD_ORDER:
+            readCSV(myFile, line, sizeof(line), true);
+            readCSV(myFile, line, sizeof(line), true);
+            readCSV(myFile, line, sizeof(line), true);
+            gameCards[totalCards].cardData[0] = (uint8_t)atoi(line);                      // from
+            readCSV(myFile, line, sizeof(line), true);
+            gameCards[totalCards].cardData[1] = (uint8_t)atoi(line);                      // to
+            readCSV(myFile, line, sizeof(line), false);
+            gameCards[totalCards].cardData[2] = (uint8_t)atoi(line);                      // points
+            gameCards[totalCards].cardLocation = CARD_PILE;
+            gameCards[totalCards].cardLocationNumber = 0;
+            break;
+          case CARD_EVENT:
+            readCSV(myFile, line, sizeof(line), true);
+            readCSV(myFile, line, sizeof(line), true);
+            readCSV(myFile, line, sizeof(line), true);
+            gameCards[totalCards].cardData[0] = (uint8_t)atoi(line);                      // reward ID
+            readCSV(myFile, line, sizeof(line), true);
+            gameCards[totalCards].cardData[1] = (uint8_t)atoi(line);                      // lost
+            readCSV(myFile, line, sizeof(line), false);
+            gameCards[totalCards].cardData[2] = totalCards + 1;                           // file line
+            gameCards[totalCards].cardLocation = CARD_PILE;
+            gameCards[totalCards].cardLocationNumber = 0;
+            break;
+          default:
+            dataOK = false;
+            break;
+        }
+        DEBUG_MSG("CARD %d Type: %d-%d DATA: %d,%d,%d", totalCards,  gameCards[totalCards].cardType, gameCards[totalCards].cardSubType, gameCards[totalCards].cardData[0], gameCards[totalCards].cardData[1], gameCards[totalCards].cardData[2])
+        totalCards++;
+      }
+      myFile.close();
+      DEBUG_MSG("OPER POINTS:\n%s", operPointNames)
+      DEBUG_MSG("CARDS: %d OPER: %d", totalCards, maxOperPoints)
+    }
+  }
+  return dataOK;
+}
 
+
+void loadGameEvent(uint8_t game, uint8_t event) {
+  char line[200];
+  File myFile;
+  sprintf (line, "/game/%d.csv", game);
+  myFile = SD.open(line);
+  if (myFile) {
+    DEBUG_MSG("Event line: %d", event)
+    while (event > 0) {                                   // skip lines
+      readCSV(myFile, line, sizeof(line), false);
+      event--;
+    }
+    readCSV(myFile, line, sizeof(line), true);            // skip types
+    readCSV(myFile, line, sizeof(line), true);
+    readCSV(myFile, nxtEventName, PWD_LNG, true);
+    readCSV(myFile, nxtEventDesc, MAX_LABEL_LNG, true);
+    myFile.close();
+  }
+}
+
+/*
+#ifdef SCREEN_SEND
+
+// In User_Setup.h set max. 5MHz as read frequency: SPI_READ_FREQUENCY   5000000
+
+void write32(File &f, uint32_t val) {                     // Helper to write a 32-bit integer to the file (little-endian)
+  f.write(val & 0xFF);
+  f.write((val >> 8) & 0xFF);
+  f.write((val >> 16) & 0xFF);
+  f.write((val >> 24) & 0xFF);
+}
+
+
+void write16(File &f, uint16_t val) {                     // Helper to write a 16-bit integer to the file (little-endian)
+  f.write(val & 0xFF);
+  f.write((val >> 8) & 0xFF);
+}
+
+void screenServer() {
+  char filename[30];
+
+  if (! sdDetected)
+    return;
+  snprintf (filename, 30, "/Scr%d.bmp", dirCount);
+  File f = SD.open(filename, FILE_WRITE);
+  if (!f) {
+    Serial.println("Screenshot failed: Could not open file for writing.");
+    return;
+  }
+
+  // Get current screen dimensions
+  uint16_t w = tft.width();
+  uint16_t h = tft.height();
+
+  // Each row in BMP must be a multiple of 4 bytes
+  uint32_t rowSize = (w * 3 + 3) & ~3;
+  uint32_t imageSize = rowSize * h;
+  uint32_t fileSize = 54 + imageSize;
+
+  // BMP Header (14 bytes)
+  f.write('B');
+  f.write('M');
+  write32(f, fileSize);
+  write32(f, 0); // Reserved
+  write32(f, 54); // Data offset
+
+  // DIB Header (40 bytes)
+  write32(f, 40); // DIB header size
+  write32(f, w); // Width
+  write32(f, h); // Height (positive means bottom-up)
+  write16(f, 1); // Color planes
+  write16(f, 24); // Bits per pixel (RGB888)
+  write32(f, 0); // Compression (0 = none)
+  write32(f, imageSize); // Image size
+  write32(f, 2835); // X pixels per meter (approx 72 DPI)
+  write32(f, 2835); // Y pixels per meter
+  write32(f, 0); // Colors in color table
+  write32(f, 0); // Important color count
+
+  // BMP files are written bottom-up
+  uint8_t rowBuffer[rowSize];
+  for (int y = h - 1; y >= 0; y--) {
+    int bufIdx = 0;
+    for (int x = 0; x < w; x++) {
+      uint16_t Color565 = tft.readPixel(x, y);
+
+      // Extract RGB from RGB565
+      uint8_t r = (Color565 >> 11) & 0x1F;
+      uint8_t g = (Color565 >> 5) & 0x3F;
+      uint8_t b = Color565 & 0x1F;
+
+      // Scale up to 8-bit
+      r = (r << 3) | (r >> 2);
+      g = (g << 2) | (g >> 4);
+      b = (b << 3) | (b >> 2);
+
+      // BMP uses BGR order
+      rowBuffer[bufIdx++] = b;
+      rowBuffer[bufIdx++] = g;
+      rowBuffer[bufIdx++] = r;
+    }
+
+    // Pad row to multiple of 4 bytes
+    while (bufIdx < rowSize) {
+      rowBuffer[bufIdx++] = 0;
+    }
+
+    f.write(rowBuffer, rowSize);
+  }
+  f.close();
+  dirCount++;
+  Serial.println("Screenshot saved successfully!");
+  return;
+}
+
+#endif
+*/
 /*
   void listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
   Serial.printf("Listing directory: %s\n", dirname);

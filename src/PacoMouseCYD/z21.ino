@@ -208,6 +208,13 @@ void emergencyOffZ21() {                                      // LAN_X_SET_TRACK
   sendUDP (0x07);
 }
 
+void emergencyStopZ21()  {                                    // LAN_X_SET_STOP
+  askZ21begin (LAN_X_Header);
+  askZ21data (0x80);
+  askZ21xor ();
+  sendUDP (0x06);
+}
+
 
 void getStatusZ21 () {
   askZ21begin (LAN_X_Header);

@@ -59,7 +59,7 @@
 // ***** LOCOMOTIVE STACK OPTIONS *****
 ////////////////////////////////////////////////////////////
 
-// Max. locomotoras guardadas en stack (hasta 254) - Max. locomotives saved in stack (up to 254):
+// Max. locomotoras guardadas en stack - Max. locomotives saved in stack:
 
 #define LOCOS_IN_STACK                100
 
@@ -79,7 +79,7 @@
 
 // Si el encoder es impreciso pruebe a descomentar la siguiente linea - If the encoder is inaccurate, try uncommenting the following line
 
-//#define  ALTERNATE_ENCODER  1
+#define  ALTERNATE_ENCODER  1
 
 
 ////////////////////////////////////////////////////////////

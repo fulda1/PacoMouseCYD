@@ -154,7 +154,7 @@ void updateAccPanel() {
     buttonData[BUT_ACC_0 + n].backgnd = (type == ACC_UNDEF) ? COLOR_WHITE : COLOR_LIGHTGREY;
   }
   n = 30;
-  getLabelOption(n + 024, panelLabelBuf, 0);
+  getLabelOption(n + 025, panelLabelBuf, 0);
   if (isLabelOption(panelLabelBuf, "tu:nofacis.phem/r") != n)
     iconData[n - 021].x = n * 4;
 }

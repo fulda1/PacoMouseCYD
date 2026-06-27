@@ -375,6 +375,30 @@ bool isWindow(uint16_t win) {
 // ***** DRAW OBJECTS *****
 ////////////////////////////////////////////////////////////
 
+void printTxtLines (char *buf, uint16_t x, uint16_t y) {
+  char line[MAX_LABEL_LNG];
+  char chr;
+  uint16_t cnt;
+  cnt = 0;
+  chr = *buf++;
+  while (chr) {
+    if (chr == '|') {
+      line[cnt] = '\0';
+      tft.drawString(line, x, y, GFXFF);
+      y += tft.fontHeight();
+      cnt = 0;
+      chr = *buf++;
+    }
+    else {
+      line[cnt++] = chr;
+      chr = *buf++;
+    }
+  }
+  line[cnt] = '\0';
+  tft.drawString(line, x, y, GFXFF);
+}
+
+
 void printLabelTxt(uint16_t id) {
   char label[MAX_LABEL_LNG];
   uint16_t cnt, yPos;
@@ -607,11 +631,13 @@ void drawObject (uint16_t type, uint16_t id) {
       tft.setTextColor(txtData[id].color);
       if (txtData[id].alignCenter) {
         tft.setTextDatum(MC_DATUM);
-        tft.drawString(txtData[id].buf, txtData[id].x + (txtData[id].w / 2), txtData[id].y + (txtData[id].h / 2), GFXFF);
+        printTxtLines(txtData[id].buf, txtData[id].x + (txtData[id].w / 2), txtData[id].y + (txtData[id].h / 2));
+        //tft.drawString(txtData[id].buf, txtData[id].x + (txtData[id].w / 2), txtData[id].y + (txtData[id].h / 2), GFXFF);
       }
       else {
         tft.setTextDatum(ML_DATUM);
-        tft.drawString(txtData[id].buf, txtData[id].x + 3, txtData[id].y + (txtData[id].h / 2), GFXFF);
+        printTxtLines(txtData[id].buf, txtData[id].x + 3, txtData[id].y + (txtData[id].h / 2));
+        //tft.drawString(txtData[id].buf, txtData[id].x + 3, txtData[id].y + (txtData[id].h / 2), GFXFF);
       }
       break;
     case OBJ_DRAWSTR:

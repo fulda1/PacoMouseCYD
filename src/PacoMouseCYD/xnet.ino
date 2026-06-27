@@ -124,6 +124,10 @@ void emergencyOffXnet() {
   sendXN();
 }
 
+void emergencyStopXnet() {
+  headerXN (0x80);                                          // Stop all locom. request (emerg. stop)  (0x80,0x80)
+  sendXN();
+}
 
 void infoLocomotoraXnet (unsigned int loco) {               // Locomotive information request         (0xE3,0x00,ADRH,ADRL,XOR)
   uint16_t adr;

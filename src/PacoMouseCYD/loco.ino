@@ -82,6 +82,7 @@ void clearLocoData (uint16_t pos) {
   for (cnt = 1; cnt < 29; cnt++)
     locoData[pos].myFuncIcon[cnt] = FNC_FUNC_OFF;
   locoData[pos].myFuncIcon[cnt] = FNC_BLANK_OFF;
+  locoData[pos].myProtocol = LOK_DCC;
 }
 
 
@@ -170,6 +171,9 @@ void loadThrottleData() {
     fncData[FNC_FX0 + n].idIcon = locoData[myLocoData].myFuncIcon[n];
   }
   updateFuncState(false);
+  lpicData[LPIC_NXT_TRAIN].id = locoData[myLocoData].myLocoID;
+  if (playingGame)
+    updateLokOrders(false);
 }
 
 
@@ -278,6 +282,10 @@ void updateSpeedHID() {
       encoderMax = 63;                                      // 0..127 -> 0..63
       encoderValue = (locoData[myLocoData].mySpeed > 1) ? (locoData[myLocoData].mySpeed >> 1) : 0;
       break;
+    case CLIENT_CS2:
+      encoderMax = 50;                                      // 0..100 -> 0..50
+      encoderValue = (locoData[myLocoData].mySpeed > 1) ? locoData[myLocoData].mySpeed >> 1 : 0;
+      break;
   }
   updateSpeedDir();
 }
@@ -368,6 +376,11 @@ void updateMySpeed() {
       if (encoderValue > 61)
         locoData[myLocoData].mySpeed++;
       break;
+    case CLIENT_CS2:
+      if ((encoderValue == 0) && shuntingMode)              // Modo maniobras
+        encoderValue = 1;
+      locoData[myLocoData].mySpeed = encoderValue << 1;        // 0..50
+      break;
   }
   locoOperationSpeed();
 }
@@ -387,9 +400,7 @@ void updateSpeedDir() {
   iconData[ICON_FWD].color = (locoData[myLocoData].myDir & 0x80) ? COLOR_NAVY : COLOR_DARKGREY;
   iconData[ICON_REV].color = (locoData[myLocoData].myDir & 0x80) ? COLOR_DARKGREY : COLOR_NAVY;
   if (isWindow(WIN_THROTTLE)) {
-    angle = map(encoderValue, 0, encoderMax, 0, 255);
-    // if ((encoderMax == 15) && (encoderValue < 2))
-    //   angle = 0;
+    angle = getGaugeAngle();
     drawObject(OBJ_ICON, ICON_FWD);
     drawObject(OBJ_ICON, ICON_REV);
     spd = map(angle, 0, 255, 0, locoData[myLocoData].myVmax);
@@ -398,20 +409,31 @@ void updateSpeedDir() {
     DEBUG_MSG("Enc: %d-%d Spd: %d Stp: %d", encoderValue, encoderMax, spd, stp)
   }
   if (isWindow(WIN_SPEEDO)) {
-    gaugeData[GAUGE_SPEEDO].value = map(encoderValue, 0, encoderMax, 0, 255);
+    gaugeData[GAUGE_SPEEDO].value = getGaugeAngle();
     fncData[FNC_SPEEDO_DIR].idIcon = (locoData[myLocoData].myDir & 0x80) ? FNC_NEXT_OFF : FNC_PREV_OFF;
     drawObject(OBJ_GAUGE, GAUGE_SPEEDO);
     drawObject(OBJ_FNC, FNC_SPEEDO_DIR);
     drawSpeedoStep();
   }
   if (isWindow(WIN_STA_PLAY)) {
-    gaugeData[GAUGE_STATION].value = map(encoderValue, 0, encoderMax, 0, 255);
+    gaugeData[GAUGE_STATION].value = getGaugeAngle();
     fncData[FNC_STA_DIR].idIcon = (locoData[myLocoData].myDir & 0x80) ? FNC_NEXT_OFF : FNC_PREV_OFF;
     drawObject(OBJ_GAUGE, GAUGE_STATION);
     drawObject(OBJ_FNC, FNC_STA_DIR);
   }
 }
 
+
+uint16_t getGaugeAngle() {
+  uint16_t angle;
+  if (encoderMax == 31) {                                   // 28 steps angle correction
+    angle = (encoderValue < 4) ? 0 : map(encoderValue, 4, encoderMax, 9, 255);
+  }
+  else {                                                    // 14, 128, 1000 steps
+    angle = map(encoderValue, 0, encoderMax, 0, 255);
+  }
+  return angle;
+}
 
 void drawSpeed(uint16_t angle, uint16_t spd, uint16_t stp) {
   gaugeData[GAUGE_SPEED].value = angle;                     // draw needle

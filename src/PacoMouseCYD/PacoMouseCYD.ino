@@ -34,12 +34,13 @@
        v0.9     03jan26   Added Station Run for kids. Corrected minor bugs on loconet
        v0.10    12feb26   Correct little bugs, clean and made more coherent code. Updating accessories. Status RGB LED. Up to 4 WiFi networks. Control of loco in accessory panel. Define actions for buttons. Added Czech language. Update from SD.
        v0.11    18mar26   Changes in config.h for easy setup. Tapping gauge controls speed. Added French language. Check WLAN connection. Battery level. Changes in encoder.
+       v0.12    16apr26   Added CS2 protocol. Gauge angle compensation in 28 steps. Added some function icons. Button actions for emergency stop & brake. Added Next train: Car cards & waybills game.
 */
 
 // PacoMouseCYD program version
 #define VER_H "0"
-#define VER_L "11"
-#define VER_R "c"
+#define VER_L "12"
+#define VER_R "b"
 
 
 //#define DEBUG                                               // Descomentar para mensajes de depuracion
@@ -119,6 +120,8 @@ uint16_t fullBatt;
 uint16_t emptyBatt;
 uint16_t currBatt;
 
+#define XPT_BATT_FAKTOR 4.18                                // XPT resistor divisor (75K + 15K): 4. Non linear response, correction factor +4.5% (4.18) gives acceptable readings
+
 
 ////////////////////////////////////////////////////////////
 // ***** TOUCHSCREEN *****
@@ -137,7 +140,7 @@ byte statusBOOT, statusSW_R, statusSW_G, statusSW_B;
 
 uint8_t actionSW_BOOT, actionSW_R, actionSW_G, actionSW_B;
 
-enum actionCmd {ACT_UNDEF, ACT_CALIBRATE, ACT_STOP, ACT_SHUNTING, ACT_NEXT, ACT_PREV,
+enum actionCmd {ACT_UNDEF, ACT_CALIBRATE, ACT_OFF, ACT_STOP, ACT_BRAKE, ACT_SHUNTING, ACT_NEXT, ACT_PREV,
                 ACT_F0, ACT_F1, ACT_F2, ACT_F3, ACT_F4, ACT_F5, ACT_F6, ACT_F7, ACT_F8, ACT_F9,
                 ACT_F10, ACT_F11, ACT_F12, ACT_F13, ACT_F14, ACT_F15, ACT_F16, ACT_F17, ACT_F18, ACT_F19,
                 ACT_F20, ACT_F21, ACT_F22, ACT_F23, ACT_F24, ACT_F25, ACT_F26, ACT_F27, ACT_F28,
@@ -172,7 +175,7 @@ unsigned long timeButtons;
 
 enum Settings {
   EE_XMIN_H, EE_XMIN_L, EE_XMAX_H, EE_XMAX_L, EE_YMIN_H, EE_YMIN_L, EE_YMAX_H, EE_YMAX_L, EE_BACKLIGHT, EE_LANGUAGE,
-  EE_ADRH, EE_ADRL, EE_STOP_MODE, EE_SHUNTING, EE_ROCO, EE_LOCK, EE_SHORT, EE_USB_LOCATION, EE_CMD_STA, EE_CMD_AUTO,
+  EE_ADRH, EE_ADRL, EE_STOP_MODE, EE_SHUNTING, EE_CS2, EE_LOCK, EE_SHORT, EE_USB_LOCATION, EE_CMD_STA, EE_CMD_AUTO,
   EE_STA_ADRH1, EE_STA_ADRL1, EE_STA_ADRH2, EE_STA_ADRL2, EE_STA_ADRH3, EE_STA_ADRL3, EE_STA_ADRH4, EE_STA_ADRL4,
   EE_STA_TRNDEF, EE_STA_TRNNUM, EE_STA_NUM, EE_STA_TIME, EE_RGB_LED, EE_ACT_BOOT, EE_ACT_R, EE_ACT_G, EE_ACT_B,
   EE_FULL_H, EE_FULL_L, EE_EMPTY_H, EE_EMPTY_L, EE_UNDEF4,
@@ -197,7 +200,7 @@ struct {
   int  ok;
 } wifiSetting;
 
-enum typeProto {CLIENT_Z21, CLIENT_XNET, CLIENT_ECOS, CLIENT_LNET, CLIENT_CS2};
+enum typeProto {CLIENT_Z21, CLIENT_XNET, CLIENT_ECOS, CLIENT_CS2, CLIENT_LNET};
 
 WiFiClient Client;
 WiFiUDP Udp;
@@ -206,6 +209,7 @@ WiFiUDP Udp;
 #define XnetPort   5550
 #define ECoSPort  15471
 #define CS2Port   15731
+#define CS2PortRX 15730
 
 uint16_t networks;
 uint8_t scrSSID;
@@ -266,11 +270,13 @@ byte csStatus = 0;
 byte stopMode;
 bool shuntingMode;
 byte shortAddress;
+uint8_t scrProt;
 
-byte tapSpeedSteps[] = {0, 8, 20, 31, 43, 54, 63,           // 128 steps
-                        0, 6, 10, 15, 20, 26, 31,           // 28 steps
-                        0, 2,  4,  7, 10, 13, 15,           // 14 steps
-                       };
+const byte tapSpeedSteps[] = {0, 8, 20, 31, 43, 54, 63,     // 128 steps
+                              0, 6, 10, 15, 20, 26, 31,     // 28 steps
+                              0, 2,  4,  7, 10, 13, 15,     // 14 steps
+                              0, 7, 15, 25, 35, 43, 50,     // 1000 steps
+                             };
 
 enum tapSteps {TAP_STP0, TAP_STP1, TAP_STP2, TAP_STP3, TAP_STP4, TAP_STP5, TAP_STP6};
 
@@ -299,7 +305,7 @@ byte lockOptions;
 unsigned long infoTimer;
 unsigned long pingTimer;
 
-byte myLocoData;                                            // current oco data index
+uint16_t myLocoData;                                        // current loco data index
 
 typedef union {                                             // Loco address
   uint8_t   adr[2];
@@ -321,6 +327,7 @@ typedef struct {
   char      myName[NAME_LNG + 1];
   uint16_t  myLocoID;                                       // ID / picture
   uint8_t   myFuncIcon[30];
+  uint8_t   myProtocol;
 } lokData;
 
 lokData   locoData[LOCOS_IN_STACK];                         // Loco data
@@ -341,6 +348,9 @@ struct {
   unsigned int locoAddress;
   char locoName[NAME_LNG + 1];
 } rosterList[LOCOS_IN_STACK];
+
+enum locoProt {LOK_DCC, LOK_MM, LOK_MFX, LOK_SX1, LOK_SX2, LOK_PROT_MAX};
+const char locoNameProt[][4] = {"DCC", "MM", "MFX", "SX1", "SX2"};
 
 
 ////////////////////////////////////////////////////////////
@@ -373,7 +383,7 @@ bool accPanelChanged;
 uint16_t myTurnout;
 
 typedef enum accType {ACC_UNDEF, ACC_TURN_L, ACC_TURN_R, ACC_TRIPLE, ACC_CROSSING, ACC_DCROSS, ACC_BETRELLE, ACC_SIGNAL2, ACC_SIGNAL3, ACC_SIGNAL4, ACC_SEM2, ACC_SEM3,
-                      ACC_PAN, ACC_TT_L, ACC_TT_R, ACC_TT_TRK, ACC_TT_TURN, ACC_LIGHT, ACC_SOUND, ACC_POWER, ACC_KEYPAD, ACC_MAX,
+                      ACC_PAN, ACC_TT_L, ACC_TT_R, ACC_TT_TRK, ACC_TT_TURN, ACC_LIGHT, ACC_SOUND, ACC_POWER, ACC_KEYPAD, ACC_SWITCH, ACC_MAX,
                      };
 
 typedef struct {
@@ -410,6 +420,7 @@ const accObj accDef[ACC_MAX] = {
   { 2, 99, {{FNC_SOUND_OFF, COLOR_BLACK, COLOR_LIGHTGREY},     {FNC_SOUND_OFF, COLOR_BLACK, COLOR_YELLOW},        {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}, {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}}}, // ACC_SOUND
   { 2, 99, {{FNC_POWER_OFF, COLOR_RED, COLOR_RED},             {FNC_POWER_OFF, COLOR_GREEN, COLOR_GREEN},         {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}, {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}}}, // ACC_POWER
   { 1, 99, {{FNC_KEYPAD_OFF, COLOR_BLACK, COLOR_YELLOW},       {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}, {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}, {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}}}, // ACC_KEYPAD
+  { 2, 99, {{FNC_SWO_OFF, COLOR_BLACK, COLOR_RED},             {FNC_SWC_OFF, COLOR_BLACK, COLOR_GREEN},           {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}, {FNC_BLANK_OFF, COLOR_LIGHTGREY, COLOR_LIGHTGREY}}}, // ACC_SWITCH
 };
 
 typedef struct {
@@ -421,7 +432,7 @@ typedef struct {
   uint16_t  activeOutput;                                   // '3A2G 3A2R 3A1G 3A1R  2A2G 2A2R 2A1G 2A1R  1A2G 1A2R 1A1G 1A1R  0A2G 0A2R 0A1G 0A1R'
 } panelElement;
 
-const uint16_t accOutDefault[ACC_MAX] = {0x0000, 0x0021, 0x0021, 0x0521, 0x0021, 0x4521, 0x0021, 0x0021, 0x0421, 0x8421, 0x0021, 0x0421, 0x0021, 0x0002, 0x0001, 0x0001, 0x0002, 0x0021, 0x0021, 0x0021, 0x0000};
+const uint16_t accOutDefault[ACC_MAX] = {0x0000, 0x0021, 0x0021, 0x0521, 0x0021, 0x4521, 0x0021, 0x0021, 0x0421, 0x8421, 0x0021, 0x0421, 0x0021, 0x0002, 0x0001, 0x0001, 0x0002, 0x0021, 0x0021, 0x0021, 0x0000, 0x0021};
 
 panelElement accPanel[16];
 panelElement currAccEdit;
@@ -516,6 +527,67 @@ bool staTurnoutPos[4];
 ////////////////////////////////////////////////////////////
 // ***** NEXT TRAIN *****
 ////////////////////////////////////////////////////////////
+
+#define MAX_CARDS           75
+#define MAX_OPER_POINTS     20
+#define OPER_NAME_LNG       20
+#define OPER_NAME_BUFLNG    (MAX_OPER_POINTS * OPER_NAME_LNG) + MAX_OPER_POINTS
+
+enum cardtypes      {CARD_OPER_POINT, CARD_ORDER, CARD_EVENT};
+enum cardsubtypes   {CARD_PLATFORM, CARD_LOAD, CARD_DEPOT,
+                     CARD_PASSENGER, CARD_GOODS, CARD_LUGGAGE, CARD_POSTAL,
+                     CARD_EVENT_ACT, CARD_REWARD,
+                    };
+enum cardlocation   {CARD_LAYOUT, CARD_PILE, CARD_TRAIN, CARD_PLAYER, CARD_DISCARD};
+enum carddataoper   {CARD_CAPACITY};
+enum cardataorder   {CARD_FROM, CARD_TO, CARD_WAGON, CARD_OPER_POINTS};
+enum cardataevent   {CARD_SOLUTION, CARD_LOST, CARD_EVENT_POINTS};
+//enum cardwagon      {WAGON_PASSANGER, WAGON_LUGGAGE, WAGON_FREIGHT};
+
+typedef struct {
+  uint8_t   cardType;                                       // CARD_OPER_POINT        CARD_ORDER              CARD_EVENT
+  uint8_t   cardSubType;                                    // CARD_PLATFORM,..       CARD_PASSENGER,..       CARD_EVENT_ACT,..
+  uint8_t   cardLocation;                                   // CARD_LAYOUT            CARD_TRAIN,..           CARD_PILE,..
+  uint16_t  cardLocationNumber;                             // 1                      2560                    0
+  uint8_t   cardData[3];                                    // 2 (CARD_CAPACITY)      1 (CARD_FROM)           5 (CARD_SOLUTION)
+  //                                                        // -                      2 (CARD_TO)             1 (CARD_LOST)
+  //                                                        // -                      2 (CARD_OPER_POINTS)    -
+} cardNextTrain;
+
+cardNextTrain gameCards[MAX_CARDS] = {
+  /*
+    {CARD_OPER_POINT, CARD_PLATFORM,  CARD_LAYOUT,  0, {2, 0, 0}},
+    {CARD_OPER_POINT, CARD_PLATFORM,  CARD_LAYOUT,  1, {3, 0, 0}},
+    {CARD_OPER_POINT, CARD_PLATFORM,  CARD_LAYOUT,  2, {2, 0, 0}},
+    {CARD_OPER_POINT, CARD_PLATFORM,  CARD_LAYOUT,  3, {2, 0, 0}},
+    {CARD_OPER_POINT, CARD_LOAD,      CARD_LAYOUT,  4, {3, 0, 0}},
+    {CARD_OPER_POINT, CARD_LOAD,      CARD_LAYOUT,  5, {2, 0, 0}},
+    {CARD_OPER_POINT, CARD_LOAD,      CARD_LAYOUT,  6, {1, 0, 0}},
+    {CARD_OPER_POINT, CARD_LOAD,      CARD_LAYOUT,  7, {4, 0, 0}},
+    {CARD_OPER_POINT, CARD_DEPOT,     CARD_LAYOUT,  8, {0, 0, 0}},
+    {CARD_ORDER,      CARD_PASSENGER, CARD_TRAIN, 321, {1, 3, 1}},
+    {CARD_ORDER,      CARD_PASSENGER, CARD_PILE,    0, {1, 3, 1}},
+    {CARD_ORDER,      CARD_PASSENGER, CARD_LAYOUT,  2, {2, 1, 3}},
+    {CARD_ORDER,      CARD_PASSENGER, CARD_PLAYER,  2, {1, 3, 1}},
+    {CARD_ORDER,      CARD_GOODS,     CARD_TRAIN, 321, {6, 4, 2}},
+    {CARD_ORDER,      CARD_LUGGAGE,   CARD_TRAIN, 321, {1, 3, 1}},
+  */
+};
+
+const uint16_t colorConductor[4] = {COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_BLACK};
+
+bool playingGame;
+uint8_t  totalCards;
+uint16_t currRound;
+uint16_t nextRound[4];
+uint8_t  currGame, maxConductor, currConductor;
+uint8_t  currOperPoint, maxOperPoints;
+char operPointNames[OPER_NAME_BUFLNG] = {
+  /*
+    "Bahnsteig 1\nBahnsteig 2\nBahnsteig 3\nBahnsteig 4\nLadestelle 1\nLadestelle 2\nLadestelle 3\nLadestelle 4\nBetriebswerk\n"
+  */
+};
+uint8_t operPointCards[4];
 
 
 
@@ -713,7 +785,7 @@ const uint8_t FunktionsTastenSymbole[] = {                  // Conversion table 
   2, 36,  2,  2,  2,  2,  2,  2,   //63
 
   2,  2,  2,  2,  2,  2,  2,  2,
-  2,  2,  2,  2,  2,  2,  2,  2,   //79
+  2,  2,  2,  2,  2,  2, 43, 44,   //79
   2,  2,  2,  2, 37,  2,  2, 38,
   39, 2,  2,  2,  2,  2,  2,  2,   //95
 
@@ -730,11 +802,69 @@ const uint8_t FunktionsTastenSymboleCS1[] = {               // Conversion table 
   4,  2, 25, 26, 22,  2, 30, 27,
   2,  2,  2, 28, 29, 20, 21,  8,   //31
 
-  18,  2,  2,  2,  2,  2,  2,  2,
+  18, 2,  2,  2,  2,  2,  2,  2,
   2,  2,  2,  2,  2,  2,  2,  2,  //47
   2,  2,  2,  2,  2,  2,  2,  2,
   2,  2,  2,  2,  2,  2,  2,  2,  //63
 };
+
+
+////////////////////////////////////////////////////////////
+// ***** CS2 *****
+////////////////////////////////////////////////////////////
+
+// Base Address protocol
+#define CS2_MFX             0x4000                           // v1
+#define CS2_MM              0x0000
+#define CS2_MM_ACC          0x3000
+#define CS2_HASH_H_V1       0x03
+#define CS2_HASH_L_V1       0x00
+
+#define CS2_DCC             0xC000                           // v2
+#define CS2_SX1             0x0800
+#define CS2_SX2             0x8000
+#define CS2_DCC_ACC         0x3800
+#define CS2_SX1_ACC         0x2800
+#define CS2_HASH_H_V2       0x47
+#define CS2_HASH_L_V2       0x11
+#define CS2_HASH_MAGIC_H    0x07
+#define CS2_HASH_MAGIC_L    0x69
+
+#define CS2_SYS             0x00                            // System-Befehle
+#define CS2_LOK_SPEED       0x08                            // Lok Geschwindigkeit
+#define CS2_LOK_DIR         0x0A                            // Lok Richtung
+#define CS2_LOK_FUNC        0x0C                            // Lok Funktion
+#define CS2_READ_CFG        0x0E                            // Lok read CV
+#define CS2_WRITE_CFG       0x10                            // Lok write CV
+#define CS2_ACC             0x16                            // Zubehör Schalten
+#define CS2_PING            0x30                            // Softwarestand Anfrage / Teilnehmer Ping 
+#define CS2_BOOT            0x36                            // Bootloader CAN gebunden, „Service“ 
+
+#define CS2_SYS_STOP        0x00                            // System Stopp
+#define CS2_SYS_GO          0x01                            // System Go
+#define CS2_SYS_HALT        0x02                            // System Halt
+#define CS2_LOK_NOTHALT     0x03                            // Lok Nothalt
+#define CS2_SYS_ZEIT        0x20                            // Systemzeit
+
+#define CS2_DIR_REMAIN      0x00                            // Fahrtrichtung bleibt
+#define CS2_DIR_FWD         0x01                            // Fahrtrichtung vorwärts
+#define CS2_DIR_REV         0x02                            // Fahrtrichtung rückwärts
+#define CS2_DIR_CHG         0x03                            // Fahrtrichtung umschalten
+
+#define CS2_BOOT_MS2        0x11                            // MS2 magic boot
+
+// P = priority, C = command, H = hash, R = response, L = length)
+// Byte 1: P|P|P|P|_|_|_|C    Byte 2: C|C|C|C|C|C|C|R     Byte 3: H|H|H|H|H|H|H|H   Byte 4: H|H|H|H|H|H|H|H    Byte 5: _|_|_|_|L|L|L|L     Byte 6-13: payload
+
+enum cs2Bytes {CS2_PRIO, CS2_CMD, CS2_HASH_H, CS2_HASH_L, CS2_DLC, CS2_DATA0, CS2_DATA1, CS2_DATA2, CS2_DATA3, CS2_DATA4, CS2_DATA5, CS2_DATA6, CS2_DATA7, CS2_PKT_LNG};
+
+uint16_t posPktCS2 = CS2_PRIO;
+
+const uint16_t baseLokProt[] = {CS2_DCC, CS2_MM, CS2_MFX, CS2_SX1, CS2_SX2};
+
+enum cs2options {CS2_OPT_BOOT, CS2_OPT_ACC};
+
+uint8_t optionsCS2;
 
 
 ////////////////////////////////////////////////////////////
@@ -764,7 +894,7 @@ void setup() {
 #ifdef DEBUG
   DEBUG_MSG("Display driver: %X %dx%d", TFT_DRIVER, TFT_WIDTH, TFT_HEIGHT)
   DEBUG_MSG("TFT BL pin: %d", TFT_BL)
-  DEBUG_MSG("GUI Usage:\n Timers: %d\n Windows: %d\n Labels: %d", MAX_SYS_TIMER, MAX_WIN_OBJ, MAX_LABEL_OBJ)
+  DEBUG_MSG("GUI Usage: \n Timers: %d\n Windows: %d\n Labels: %d", MAX_SYS_TIMER, MAX_WIN_OBJ, MAX_LABEL_OBJ)
   DEBUG_MSG(" Draw Strings: %d\n Chars: %d\n Function Icons: %d", MAX_DRAWSTR_OBJ, MAX_CHAR_OBJ, MAX_FNC_OBJ)
   DEBUG_MSG(" Icons: %d\n Buttons: %d\n Radio Buttons: %d", MAX_ICON_OBJ, MAX_BUT_OBJ, MAX_RAD_OBJ)
   DEBUG_MSG(" Progress Bar: %d\n Loco Pictures: %d\n Gauges: %d", MAX_BAR_OBJ, MAX_LPIC_OBJ, MAX_GAUGE_OBJ)
@@ -854,11 +984,13 @@ void initVariables() {
       wifiSetting.protocol = CLIENT_Z21;
       wifiSetting.ok = 0x464D;
       EEPROM.put(value, wifiSetting);                       // also init calibration values
+      EEPROM.write(EE_LOCK, 0);                             // and unlock all
+      EEPROM.write(EE_SHUNTING, 0);                         // also disable shunting mode
       touchscreen.setCalibration(0, 4095, 0, 4095);         // set default calibration values
       saveCalibrationValues();                              // save all
-      DEBUG_MSG("Setting default WiFi %d & calibration values", pos);
+      DEBUG_MSG("Setting default WiFi %d & calibration values and unlock", pos);
     }
-    snprintf (networkNamesBuf[pos], NAME_LNG + 1, "%s", wifiSetting.network);
+    snprintf (networkNamesBuf[pos], NAME_LNG + 1, " %s", wifiSetting.network);
     DEBUG_MSG("%d - %d - %s", pos, value, wifiSetting.network)
   }
   pos = EEPROM.read(EE_WIFI_NET) & 0x03;                    // read current WiFi settings
@@ -907,7 +1039,7 @@ void initVariables() {
   progStepCV = PRG_IDLE;
   clockRate = 0;                                            // fast clock internal
   clockHour = 0;
-  clockMin = 0;
+  clockMin  = 0;
   updateFastClock();
   initLocos();
   stopMode = EEPROM.read(EE_STOP_MODE);
@@ -935,6 +1067,7 @@ void initVariables() {
   msgDecodePhase = MSG_WAIT;                                // ECoS
   requestedCV = false;
   appVer = 4;
+  optionsCS2 = EEPROM.read(EE_CS2);                         // CS2
   staTurnoutAdr1 = staGetTurnoutAdr(EE_STA_ADRH1, 1);       // Station Run
   staTurnoutAdr2 = staGetTurnoutAdr(EE_STA_ADRH2, 2);
   staTurnoutAdr3 = staGetTurnoutAdr(EE_STA_ADRH3, 3);
@@ -945,7 +1078,10 @@ void initVariables() {
   staMaxStations = EEPROM.read(EE_STA_NUM);
   staMaxStations = constrain(staMaxStations, 3, 5);
   staStartTime =   EEPROM.read(EE_STA_TIME);
-
+  playingGame = false;                                      // Next Train
+  currGame = currLanguage;
+  maxConductor = 2;
+  currConductor = 0;
 }
 
 

@@ -1,0 +1,53 @@
+Card Type;Card Subtype;Name;Description;Capacity/From/Reward ID;/To/Lost;/Points/
+0;0;Anden 1;;2;;
+0;0;Anden 2;;1;;
+0;0;Anden 3;;2;;
+0;0;Anden 4;;1;;
+0;1;Via de carga 1;;1;;
+0;1;Via de carga 2;;2;;
+0;1;Via de carga 3;;1;;
+0;2;Deposito;;0;;
+1;3;;;0;1;1
+1;3;;;0;2;2
+1;3;;;0;3;3
+1;3;;;1;0;1
+1;3;;;1;2;2
+1;3;;;1;3;3
+1;3;;;2;0;1
+1;3;;;2;1;2
+1;3;;;2;3;3
+1;3;;;3;0;1
+1;3;;;3;1;2
+1;3;;;3;2;3
+1;4;;;4;5;1
+1;4;;;4;6;2
+1;4;;;5;4;3
+1;4;;;5;6;1
+1;4;;;6;4;2
+1;4;;;6;5;3
+1;4;;;4;5;1
+1;4;;;5;6;2
+1;4;;;6;4;3
+1;5;;;0;3;2
+1;5;;;1;2;2
+1;5;;;2;0;2
+1;5;;;3;1;2
+1;6;;;0;6;5
+2;8;A todo vapor;Puedes circular a todo|vapor para recuperar|un retraso;0;;
+2;8;Aumento de sueldo;Puedes poner fin a una|huelga con este aumento|de sueldo;1;;
+2;8;Brigada obras;La brigada puede reparar|fallos de elementos|y vias;2;;
+2;8;Herramienta;Las herramientas son utiles|para reparar averias|y desperfectos;3;;
+2;8;Publicidad;Tu tren ha recibido buenas|criticas por su puntualidad;4;;
+2;7;Averia locomotora;Lleva la locomotora al|deposito para su reparacion;3;;
+2;7;Cierre de vias;La ruta desde aqui a la|proxima parada esta cerrada|Pierde dos rondas.;2;2;
+2;7;Desalojo;La estacion ha sido|desalojada por una amenaza.|Pierde una ronda.;99;1;
+2;7;Desvio;No puedes llegar a la|proxima parada directamente|Usa un desvio.;99;;
+2;7;Fallo de senal;La senal de salida|no funciona;2;1;
+2;7;Fallo Desvio;El desvio mas cercano al|ultimo tren no es transitable;2;1;
+2;7;Huelga;Los trabajadores estan|en huelga;1;4;
+2;7;Incendio en almacen;No puedes cargar en esta|ronda debido a un incendio|en el almacen;99;;
+2;7;Nieve / Hielo;Ha nevado y la via|esta impracticable;0;2;
+2;7;Obra;Hay obras en la via, circula|a velocidad reducida hasta|la proxima parada.;99;;
+2;7;Retraso;El tren va con retraso.|Pierde una ronda;0;1;
+2;7;Robo;El tren ha sufrido un robo|y tiene desperfectos;3;1;
+2;7;Tormenta;Debido a la tormenta hay|retrasos por el estado|de la via.|Pierde una ronda;99;1;

@@ -83,7 +83,7 @@ void readBattLevel() {
 }
 
 uint16_t getBattLevel() {
-  return  currBatt >> 3;
+  return  (currBatt >> 3);
 }
 
 
@@ -108,7 +108,7 @@ void updateBattLevel() {
 
 void updateBattData() {
 #if (BATT_MODE == READ_XPT)
-  snprintf(battBuf, NAME_LNG + 1, "%.2fV - %.2fV", (((float)(emptyBatt * 2.5) * 4) / 4096), (((float)(fullBatt * 2.5) * 4) / 4096));
+  snprintf(battBuf, NAME_LNG + 1, "%.2fV - %.2fV", (((float)(emptyBatt * 2.5) * XPT_BATT_FAKTOR) / 4096), (((float)(fullBatt * 2.5) * XPT_BATT_FAKTOR) / 4096));
 #else
   snprintf(battBuf, NAME_LNG + 1, "%d  -  %d", emptyBatt, fullBatt);
 #endif
@@ -173,6 +173,8 @@ initResult initSequence() {                                       // Performs in
   drawObject(OBJ_ICON, ICON_WIFI);                                // connecting to WiFi network
   drawObject(OBJ_DRAWSTR, DSTR_INIT_STAT);
   drawObject(OBJ_LABEL, LBL_CONNECT);
+  getLabelTxt(LBL_PACO_TXT, label);
+  WiFi.setHostname(label);
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifiSetting.ssid, wifiSetting.password);
   n = 0;
@@ -227,7 +229,7 @@ initResult initSequence() {                                       // Performs in
           result = INIT_NO_CONNECT;
         }
         else {
-          wifiSetting.port = XnetPort;
+          //wifiSetting.port = XnetPort;
           Client.setNoDelay(true);
           rxIndice = FRAME1;
           getVersionXnet();                                       // pide la version del Xpressnet
@@ -241,12 +243,36 @@ initResult initSequence() {                                       // Performs in
           result = INIT_NO_CONNECT;
         }
         else {
-          wifiSetting.port = ECoSPort;
+          //wifiSetting.port = ECoSPort;
           Client.setNoDelay(true);
           requestViews();
           requestLocoList();
           waitWifiData(500);
         }
+        break;
+      case CLIENT_CS2:
+        if (wifiSetting.serverType) {                               // TCP
+          if (!Client.connect(wifiSetting.CS_IP, CS2Port)) {
+            DEBUG_MSG("Connection to CS2 failed");
+            result = INIT_NO_CONNECT;
+          }
+          else {
+            //wifiSetting.port = CS2Port;
+            Client.setNoDelay(true);
+          }
+        }
+        else {                                                      // UDP
+          WiFi.setSleep(false);
+          Udp.begin(CS2PortRX);
+          //wifiSetting.port = CS2Port;
+          DEBUG_MSG("Now listening UDP port %d", CS2PortRX);
+        }
+        if (bitRead(optionsCS2, CS2_OPT_BOOT)) {                    // activate Gleisbox without MS2 connected
+          bootMessageCS2();
+          delay(400);                                               // wait 400ms after sending bootloader go!
+        }
+        pingCS2();
+        getStatusCS2();
         break;
     }
   }
@@ -280,6 +306,11 @@ bool notLockedOption (byte opt) {                                 // check if op
     return false;
   else
     return true;
+}
+
+
+void updateLockAcc() {
+  fncData[FNC_ACC_PANEL].idIcon = notLockedOption(LOCK_TURNOUT) ? FNC_ACC_OFF : FNC_BLANK_OFF;
 }
 
 
@@ -477,7 +508,10 @@ void wifiProcess() {
       processLnet();
       break;
     case CLIENT_ECOS:
-      ECoSProcess();
+      processECoS();
+      break;
+    case CLIENT_CS2:
+      processCS2();
       break;
   }
 }
@@ -515,6 +549,10 @@ void setProtocolData() {
       snprintf(keybProtoBuf, PWD_LNG, "ECoS");
       snprintf(keybPortBuf, 6, "%d", ECoSPort);
       break;
+    case CLIENT_CS2:
+      snprintf(keybProtoBuf, PWD_LNG, "CS2");
+      snprintf(keybPortBuf, 6, "%d", CS2Port);
+      break;
   }
   for (n = 0; n < 5; n++)
     txtData[TXT_IP1 + n].backgnd = COLOR_BACKGROUND;
@@ -538,6 +576,8 @@ void setOptionsData() {
       break;
     case CLIENT_ECOS:
       break;
+    case CLIENT_CS2:
+      break;
   }
 }
 
@@ -547,7 +587,7 @@ void setOptionsData() {
 ////////////////////////////////////////////////////////////
 
 void infoLocomotora (unsigned int loco) {
-  DEBUG_MSG("Info Loco % d", loco)
+  DEBUG_MSG("Info Loco %d", loco)
   switch (wifiSetting.protocol) {
     case CLIENT_Z21:
       infoLocomotoraZ21 (loco);
@@ -560,6 +600,9 @@ void infoLocomotora (unsigned int loco) {
       break;
     case CLIENT_ECOS:
       infoLocomotoraECoS (loco);       // ID
+      break;
+    case CLIENT_CS2:
+      infoLocomotoraCS2 (loco);
       break;
   }
 }
@@ -579,6 +622,9 @@ void locoOperationSpeed() {
     case CLIENT_ECOS:
       locoOperationSpeedECoS();
       break;
+    case CLIENT_CS2:
+      locoOperationSpeedCS2();
+      break;
   }
 }
 
@@ -596,6 +642,9 @@ void changeDirection() {
     case CLIENT_ECOS:
       changeDirectionECoS();
       break;
+    case CLIENT_CS2:
+      changeDirectionCS2();
+      break;
   }
 }
 
@@ -612,6 +661,9 @@ void funcOperations (uint8_t fnc) {
       break;
     case CLIENT_ECOS:
       funcOperationsECoS(fnc);
+      break;
+    case CLIENT_CS2:
+      funcOperationsCS2(fnc);
       break;
   }
 }
@@ -631,6 +683,9 @@ byte getCurrentStep() {
     case CLIENT_ECOS:
       value = getCurrentStepECoS();
       break;
+    case CLIENT_CS2:
+      value = getCurrentStepCS2();
+      break;
   }
   return value;
 }
@@ -645,6 +700,9 @@ void releaseLoco() {
     case CLIENT_ECOS:
       releaseLocoECoS();
       break;
+      // XNET not defined
+      // Z21  not defined
+      // CS2  not defined
   }
 }
 
@@ -665,6 +723,9 @@ void sendAccessory(unsigned int FAdr, int pair, bool activate) {
     case CLIENT_ECOS:
       setAccessoryECoS(FAdr, pair, activate);
       break;
+    case CLIENT_CS2:
+      setAccessoryCS2(FAdr, pair, activate);
+      break;
   }
 }
 
@@ -674,8 +735,6 @@ void accessoryChange(uint16_t FAdr, bool state) {
   DEBUG_MSG("Acc change: %d:%d", FAdr, state);
   if (isWindow(WIN_ACCESSORY))
     changeAccPosition(FAdr, state);
-
-
 }
 
 
@@ -693,6 +752,9 @@ void resumeOperations() {
       break;
     case CLIENT_ECOS:
       resumeOperationsECoS();
+      break;
+    case CLIENT_CS2:
+      resumeOperationsCS2();
       break;
   }
 }
@@ -712,6 +774,9 @@ void emergencyOff() {
       break;
     case CLIENT_ECOS:
       emergencyOffECoS();
+      break;
+    case CLIENT_CS2:
+      emergencyOffCS2();
       break;
   }
 }
@@ -740,9 +805,32 @@ bool isTrackOff() {
     case CLIENT_ECOS:
       state = (csStatus > 0) ? false : true;
       break;
+    case CLIENT_CS2:
+      state = (csStatus > 0) ? false : true;
+      break;
   }
   return state;
 }
+
+
+void emergencyStop() {
+  switch (wifiSetting.protocol) {
+    case CLIENT_Z21:
+      emergencyStopZ21();
+      break;
+    case CLIENT_XNET:
+      emergencyStopXnet();
+      break;
+    case CLIENT_LNET:
+      emergencyStopLnet();
+      break;
+    case CLIENT_CS2:
+      emergencyStopCS2();
+      break;
+      // ECoS not supported
+  }
+}
+
 
 void getStatusCS() {
   switch (wifiSetting.protocol) {
@@ -758,6 +846,9 @@ void getStatusCS() {
     case CLIENT_ECOS:
       getStatusECoS();
       break;
+    case CLIENT_CS2:
+      getStatusCS2();                                             // undocumented
+      break;
   }
 }
 
@@ -771,6 +862,9 @@ void setTime(byte hh, byte mm, byte rate) {
       break;
     case CLIENT_LNET:
       setTimeLnet(hh, mm, rate);
+      break;
+    case CLIENT_CS2:
+      setTimeCS2(hh, mm, rate);
       break;
       // ECoS not supported
   }
@@ -792,6 +886,9 @@ void readCV (unsigned int adr, byte stepPrg) {
     case CLIENT_ECOS:
       readCVECoS(adr, stepPrg);
       break;
+    case CLIENT_CS2:
+      readCVCS2(adr, stepPrg);
+      break;
   }
 }
 
@@ -811,6 +908,9 @@ void writeCV (unsigned int adr, unsigned int data, byte stepPrg) {
     case CLIENT_ECOS:
       writeCVECoS(adr, data, stepPrg);
       break;
+    case CLIENT_CS2:
+      writeCVCS2(adr, data, stepPrg);
+      break;
   }
 }
 
@@ -828,6 +928,8 @@ void exitProgramming() {
     case CLIENT_ECOS:
       exitProgrammingECoS();
       break;
+      // LNET not defined
+      // CS2  not defined
   }
 }
 
@@ -837,7 +939,7 @@ void exitProgramming() {
 
 
 void endProg() {                                                  // Fin de programcion/lectura CV
-  DEBUG_MSG("END PROG: CVData - % d Step: % d", CVdata, progStepCV);
+  DEBUG_MSG("END PROG: CVData - %d Step: %d", CVdata, progStepCV);
   if (isTrackOff())
     setColorRGB(LED_RGB_RED);
   else
@@ -924,7 +1026,7 @@ void showDirCV() {                                                // muestra dir
   setBitsCV();
   if (isWindow(WIN_ALERT))
     closeWindow(WIN_ALERT);
-  sprintf(locoEditAddr, " % d", decoAddress);
+  sprintf(locoEditAddr, " %d", decoAddress);
   openWindow(WIN_PROG_ADDR);
   if (wifiSetting.protocol == CLIENT_LNET)
     progUhli(UHLI_PRG_END);

@@ -76,6 +76,7 @@ ERROR_Please_enable_LOAD_GFXFF_in_User_Setup!
 #define COLOR_SILVER          0xA510
 #define COLOR_CREAM           0xFFF9
 #define COLOR_GHOST_WHITE     0xF7BF
+#define COLOR_SKIN_BROWN      0xBBCA
 
 #define COLOR_BACKGROUND      0xB5B6                      // 0xB6B6B6
 #define COLOR_TRANSPARENT     TFT_TRANSPARENT
@@ -129,7 +130,7 @@ uint16_t  lastClickY;
 ////////////////////////////////////////////////////////////
 
 enum timers {TMR_BLIGHT, TMR_END_LOGO, TMR_POWER, TMR_SPEEDO, TMR_INFO, TMR_WAIT, TMR_STEAM, TMR_ACCESSORY, TMR_SCAN, TMR_FNC_ECOS,
-             TMR_STA_RUN, TMR_WIFI_CHK,
+             TMR_STA_RUN, TMR_WIFI_CHK, 
              MAX_SYS_TIMER
             };
 

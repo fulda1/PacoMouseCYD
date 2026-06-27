@@ -258,6 +258,11 @@ void emergencyOffLnet() {
   lnetSend(&SendPacket);
 }
 
+void emergencyStopLnet() {
+  SendPacket.data[0] = OPC_IDLE;                                    //  B'cast emerg. STOP
+  lnetSend(&SendPacket);
+  
+}
 
 void infoLocomotoraLnet (unsigned int address) {
   byte adrH, adrL;

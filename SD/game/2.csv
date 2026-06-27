@@ -1,0 +1,53 @@
+Card Type;Card Subtype;Name;Description;Capacity/From/Reward ID;-/To/Rounds;-/Points/-
+0;0;Andana 1;;2;;
+0;0;Andana 2;;1;;
+0;0;Andana 3;;2;;
+0;0;Andana 4;;1;;
+0;1;Via de carrega 1;;1;;
+0;1;Via de carrega 2;;2;;
+0;1;Via de carrega 3;;1;;
+0;2;Diposit;;0;;
+1;3;;;0;1;1
+1;3;;;0;2;2
+1;3;;;0;3;3
+1;3;;;1;0;1
+1;3;;;1;2;2
+1;3;;;1;3;3
+1;3;;;2;0;1
+1;3;;;2;1;2
+1;3;;;2;3;3
+1;3;;;3;0;1
+1;3;;;3;1;2
+1;3;;;3;2;3
+1;4;;;4;5;1
+1;4;;;4;6;2
+1;4;;;5;4;3
+1;4;;;5;6;1
+1;4;;;6;4;2
+1;4;;;6;5;3
+1;4;;;4;5;1
+1;4;;;5;6;2
+1;4;;;6;4;3
+1;5;;;0;3;2
+1;5;;;1;2;2
+1;5;;;2;0;2
+1;5;;;3;1;2
+1;6;;;0;6;5
+2;8;A tot vapor;Pots circular a tot|vapor per a recuperar|un retard;0;;
+2;8;Augment de sou;Pots posar fi a una|vaga amb aquest augment|de sou;1;;
+2;8;Brigada obres;La brigada pot reparar|fallades d'elements|i vies;2;;
+2;8;Eines;Les eines son utils per|reparar averies i|desperfectes;3;;
+2;8;Publicitat;El teu tren ha rebut bones|critiques per la seva|puntualitat;4;;
+2;7;Averia locomotora;Porta la locomotora al|diposit per a la seva|reparacio;3;;
+2;7;Tancament de vies;La ruta des d'aqui a la|propera parada esta tancada|Perd dues rondes;2;2;
+2;7;Desallotjament;La estacio ha sigut|desallotjada per|una amenaca.|Perd una ronda;99;1;
+2;7;Desviament;No pots arribar a la|propera parada directament|Utilitza un desviament;99;;
+2;7;Fallada en senyal;La senyal de sortida|no funciona;2;1;
+2;7;Fallada en agulla;La agulla mes propera a|l'ultim tren no es transitable;2;1;
+2;7;Vaga;Els treballadors estan|en vaga;1;4;
+2;7;Incendi al magatzem;No pots carregar en aquesta|ronda degut a un incendi|al magatzem;99;;
+2;7;Neu / Gel;Ha nevat i la via|esta impracticable;0;2;
+2;7;Obres;Hi ha obras a la via, circula|a velocitat reduida fins|la propera parada;99;;
+2;7;Retard;El tren va amb retard.|Perd una ronda;0;1;
+2;7;Robatori;El tren ha sofert un robatori|i te desperfectes;3;1;
+2;7;Tempesta;A causa de la tempesta hi|ha retards per l'estat|de la via.|Perd una ronda;99;1;

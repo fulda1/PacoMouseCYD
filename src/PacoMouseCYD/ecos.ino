@@ -26,7 +26,7 @@ void sendMsgECOS (char *buf) {
   timeoutECoS = millis();
   recvAnswer = false;
   while ((millis() - timeoutECoS < 50) && (!recvAnswer))                  // wait answer for 50ms
-    recvAnswer = ECoSProcess();
+    recvAnswer = processECoS();
 }
 
 
@@ -218,7 +218,7 @@ void exitProgrammingECoS() {
 // ***** ECoS DECODE *****
 ////////////////////////////////////////////////////////////
 
-bool ECoSProcess() {
+bool processECoS() {
   char chr;
   bool rcvMsg;
   rcvMsg = false;

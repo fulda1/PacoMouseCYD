@@ -13,6 +13,7 @@
 // OPCODES
 #define OPC_GPOFF               0x82              // GLOBAL power OFF request 
 #define OPC_GPON                0x83              // GLOBAL power ON request
+#define OPC_IDLE                0x85              // FORCE IDLE state, B'cast emerg. STOP
 
 #define OPC_LOCO_SPD            0xA0              // SET SLOT speed
 #define OPC_LOCO_DIRF           0xA1              // SET SLOT dir,F0-4 state
