@@ -770,7 +770,7 @@ static const char *translations[][MAX_LANG] = {             // DON'T CHANGE ORDE
     [LANG_SPANISH] = "Proximo tren",
     [LANG_CATALAN] = "Proxim tren",
     [LANG_GERMAN]  = "Nachster Zug",
-    [LANG_CZECH]   = "Dalsí vlak",
+    [LANG_CZECH]   = "Dalsi vlak",
     [LANG_FRENCH]  = "Prochain train",
   },
   { // LBL_ROUND
