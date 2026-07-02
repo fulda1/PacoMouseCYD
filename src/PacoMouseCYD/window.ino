@@ -136,7 +136,9 @@ void openWindow(uint16_t id) {
       createObject(OBJ_ICON, ICON_LOW_BATT);
       createObject(OBJ_ICON, ICON_FNEXT);
       createObject(OBJ_ICON, ICON_LOK_EDIT);
+#ifndef NO_ACCESSORY_ON_MAIN
       createObject(OBJ_FNC, FNC_ACC_PANEL);
+#endif
       createObject(OBJ_FNC, FNC_CONDUCTOR);
       //createObject(OBJ_ICON, ICON_FWD);
       //createObject(OBJ_ICON, ICON_REV);
